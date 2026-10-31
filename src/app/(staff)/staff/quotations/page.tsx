@@ -7,17 +7,22 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { DateDisplay } from "@/components/ui/DateDisplay";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { QuotationModal } from "@/components/modals/QuotationModal";
+import { QuotationPrintModal } from "@/components/modals/QuotationPrintModal";
 import { subscriptionOps } from "@/lib/services/subscription-ops";
 import { Quotation } from "@/types/domain";
-import { Plus, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Plus, ArrowRight, CheckCircle2, Search, Printer, FileText } from "lucide-react";
 import Link from "next/link";
 
 export default function StaffQuotationsPage() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "converted">("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [convertTarget, setConvertTarget] = useState<Quotation | null>(null);
+  const [printTarget, setPrintTarget] = useState<Quotation | null>(null);
   const [isConverting, setIsConverting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -46,12 +51,28 @@ export default function StaffQuotationsPage() {
     }
   };
 
+  const filtered = quotations.filter((q) => {
+    const matchesSearch =
+      q.quotation_number.toLowerCase().includes(search.toLowerCase()) ||
+      (q.customer?.name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (q.customer?.customer_code || "").toLowerCase().includes(search.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "all" ? true : statusFilter === "converted" ? q.status === "converted" : q.status !== "converted";
+
+    return matchesSearch && matchesStatus;
+  });
+
   const columns = [
     {
       key: "quotation_number",
       header: "Quotation #",
       render: (row: Quotation) => (
-        <span className="font-semibold text-brand">
+        <span
+          className="font-semibold text-brand hover:underline cursor-pointer flex items-center gap-1.5"
+          onClick={() => setPrintTarget(row)}
+        >
+          <FileText className="w-3.5 h-3.5 text-slate-400" />
           {row.quotation_number}
         </span>
       ),
@@ -86,22 +107,36 @@ export default function StaffQuotationsPage() {
     {
       key: "action",
       header: "Workflow Action",
-      render: (row: Quotation) =>
-        row.status !== "converted" ? (
+      render: (row: Quotation) => (
+        <div className="flex items-center gap-2">
           <Button
             size="sm"
-            variant="outline"
-            rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-            onClick={() => setConvertTarget(row)}
+            variant="ghost"
+            className="h-7 text-xs px-2 text-slate-600 hover:text-slate-900"
+            leftIcon={<Printer className="w-3 h-3" />}
+            onClick={() => setPrintTarget(row)}
           >
-            Convert to Sub
+            Print
           </Button>
-        ) : (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Converted
-          </span>
-        ),
+
+          {row.status !== "converted" ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs px-2"
+              rightIcon={<ArrowRight className="w-3 h-3" />}
+              onClick={() => setConvertTarget(row)}
+            >
+              Convert to Sub
+            </Button>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+              <CheckCircle2 className="w-3 h-3" />
+              Converted
+            </span>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -133,7 +168,53 @@ export default function StaffQuotationsPage() {
         </div>
       )}
 
-      <DataTable columns={columns} data={quotations} />
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              statusFilter === "all"
+                ? "bg-slate-900 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            All Quotes ({quotations.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter("draft")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              statusFilter === "draft"
+                ? "bg-indigo-600 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Active / Draft ({quotations.filter((q) => q.status !== "converted").length})
+          </button>
+          <button
+            onClick={() => setStatusFilter("converted")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              statusFilter === "converted"
+                ? "bg-emerald-600 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Converted ({quotations.filter((q) => q.status === "converted").length})
+          </button>
+        </div>
+
+        <div className="w-full sm:w-64 relative">
+          <Search className="w-3.5 h-3.5 text-text-muted absolute left-3 top-3" />
+          <Input
+            placeholder="Search quotation or customer..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-9 text-xs"
+          />
+        </div>
+      </div>
+
+      <DataTable columns={columns} data={filtered} />
 
       <QuotationModal
         isOpen={isCreateOpen}
@@ -141,6 +222,12 @@ export default function StaffQuotationsPage() {
         onSuccess={() => {
           setQuotations(subscriptionOps.getQuotations());
         }}
+      />
+
+      <QuotationPrintModal
+        isOpen={!!printTarget}
+        onClose={() => setPrintTarget(null)}
+        quotation={printTarget}
       />
 
       <ConfirmDialog

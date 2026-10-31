@@ -19,9 +19,11 @@ import {
   Quotation,
   QuotationLine,
   QuotationStatus,
+  QuotationTemplate,
   Subscription,
   SubscriptionLine,
   SubscriptionStatus,
+  SubscriptionEvent,
 } from "@/types/domain";
 
 import {
@@ -38,7 +40,39 @@ const STORAGE_KEYS = {
   PLANS: "brightloop_plans_v1",
   QUOTATIONS: "brightloop_quotations_v1",
   SUBSCRIPTIONS: "brightloop_subscriptions_v1",
+  TEMPLATES: "brightloop_templates_v1",
 };
+
+export const defaultQuotationTemplates: QuotationTemplate[] = [
+  {
+    id: "tpl-qms-enterprise",
+    name: "Enterprise QMS Compliance Suite",
+    description: "Full Quality Management Platform with Odoo Enterprise Integration (+₹560)",
+    default_notes: "Includes standard 1-year compliance support, audit trail maintenance, and 1TB cloud storage.",
+    lines: [
+      { product_id: "prod-qms", variant_id: "var-qms-odoo", quantity: 1 },
+      { product_id: "prod-storage", quantity: 2 },
+    ],
+  },
+  {
+    id: "tpl-event-whitelabel",
+    name: "Event Management Platform Bundle",
+    description: "Event ticketing and registration with custom branding (+₹2,000)",
+    default_notes: "Includes whitelabel custom domain setup, attendee registration app, and payment gateway connectivity.",
+    lines: [
+      { product_id: "prod-event", variant_id: "var-ev-whitelabel", quantity: 1 },
+    ],
+  },
+  {
+    id: "tpl-cloud-backup",
+    name: "Dedicated Cloud Infrastructure Tier",
+    description: "High-speed encrypted object storage backup (2.5TB)",
+    default_notes: "High-availability geo-replicated backup with 99.99% uptime SLA.",
+    lines: [
+      { product_id: "prod-storage", quantity: 5 },
+    ],
+  },
+];
 
 // Safe localStorage loader
 function loadStorage<T>(key: string, fallback: T): T {
@@ -92,6 +126,7 @@ class SubscriptionOperationsService {
   private plans: Plan[] = [];
   private quotations: Quotation[] = [];
   private subscriptions: Subscription[] = [];
+  private templates: QuotationTemplate[] = [];
   private listeners: Set<() => void> = new Set();
   private initialized = false;
 
@@ -106,6 +141,7 @@ class SubscriptionOperationsService {
     this.plans = loadStorage<Plan[]>(STORAGE_KEYS.PLANS, mockPlans);
     this.quotations = loadStorage<Quotation[]>(STORAGE_KEYS.QUOTATIONS, mockQuotations);
     this.subscriptions = loadStorage<Subscription[]>(STORAGE_KEYS.SUBSCRIPTIONS, mockSubscriptions);
+    this.templates = loadStorage<QuotationTemplate[]>(STORAGE_KEYS.TEMPLATES, defaultQuotationTemplates);
     this.initialized = true;
   }
 
@@ -410,6 +446,21 @@ class SubscriptionOperationsService {
     return this.quotations[idx];
   }
 
+  public getQuotationTemplates(): QuotationTemplate[] {
+    this.init();
+    return [...this.templates];
+  }
+
+  public getCustomerSubscriptions(customerId: string): Subscription[] {
+    this.init();
+    return this.subscriptions.filter((s) => s.customer_id === customerId);
+  }
+
+  public getCustomerQuotations(customerId: string): Quotation[] {
+    this.init();
+    return this.quotations.filter((q) => q.customer_id === customerId);
+  }
+
   // ==========================================
   // SUBSCRIPTIONS & LIFECYCLE (M3-05)
   // ==========================================
@@ -472,6 +523,18 @@ class SubscriptionOperationsService {
       };
     });
 
+    const initialEvents: SubscriptionEvent[] = [
+      {
+        id: `ev-${subscriptionId}-1`,
+        subscription_id: subscriptionId,
+        event_type: data.quotation_id ? "converted" : "created",
+        description: data.quotation_id
+          ? "Subscription established from accepted Sales Quotation with locked pricing snapshots."
+          : `Subscription created in ${data.status || "confirmed"} status with agreed terms.`,
+        created_at: new Date().toISOString(),
+      },
+    ];
+
     const newSub: Subscription = {
       id: subscriptionId,
       subscription_number: subscriptionNumber,
@@ -486,6 +549,7 @@ class SubscriptionOperationsService {
       payment_terms: data.payment_terms || "Net 30 Days",
       status: data.status || "confirmed",
       lines: subscriptionLines,
+      events: initialEvents,
       created_at: new Date().toISOString(),
     };
 
@@ -571,9 +635,26 @@ class SubscriptionOperationsService {
       );
     }
 
+    const eventTypeMap: Record<SubscriptionStatus, SubscriptionEvent["event_type"]> = {
+      draft: "created",
+      quotation: "created",
+      confirmed: "confirmed",
+      active: "activated",
+      closed: "closed",
+    };
+
+    const newEvent: SubscriptionEvent = {
+      id: `ev-${current.id}-${Date.now()}`,
+      subscription_id: current.id,
+      event_type: eventTypeMap[nextStatus] || "confirmed",
+      description: `Transitioned lifecycle state from '${current.status.toUpperCase()}' to '${nextStatus.toUpperCase()}'.`,
+      created_at: new Date().toISOString(),
+    };
+
     this.subscriptions[idx] = {
       ...current,
       status: nextStatus,
+      events: [newEvent, ...(current.events || [])],
     };
 
     saveStorage(STORAGE_KEYS.SUBSCRIPTIONS, this.subscriptions);
@@ -592,9 +673,18 @@ class SubscriptionOperationsService {
       throw new Error(`Plan ${current.plan.name} does not permit pausing.`);
     }
 
+    const pauseEvent: SubscriptionEvent = {
+      id: `ev-${current.id}-${Date.now()}`,
+      subscription_id: current.id,
+      event_type: "paused",
+      description: "Subscription temporarily paused by operations. Recurring billing generation suspended.",
+      created_at: new Date().toISOString(),
+    };
+
     this.subscriptions[idx] = {
       ...current,
       is_paused: true,
+      events: [pauseEvent, ...(current.events || [])],
     };
 
     saveStorage(STORAGE_KEYS.SUBSCRIPTIONS, this.subscriptions);
@@ -610,9 +700,18 @@ class SubscriptionOperationsService {
       throw new Error("Only active subscriptions can be resumed.");
     }
 
+    const resumeEvent: SubscriptionEvent = {
+      id: `ev-${current.id}-${Date.now()}`,
+      subscription_id: current.id,
+      event_type: "resumed",
+      description: "Subscription resumed. Recurring billing schedule restored.",
+      created_at: new Date().toISOString(),
+    };
+
     this.subscriptions[idx] = {
       ...current,
       is_paused: false,
+      events: [resumeEvent, ...(current.events || [])],
     };
 
     saveStorage(STORAGE_KEYS.SUBSCRIPTIONS, this.subscriptions);
@@ -633,10 +732,19 @@ class SubscriptionOperationsService {
       frequency
     );
 
+    const renewEvent: SubscriptionEvent = {
+      id: `ev-${current.id}-${Date.now()}`,
+      subscription_id: current.id,
+      event_type: "renewed",
+      description: `Term extended by +1 ${frequency} cycle. New expiry date: ${newExpiry}, next billing: ${newNextBilling}.`,
+      created_at: new Date().toISOString(),
+    };
+
     this.subscriptions[idx] = {
       ...current,
       expiry_date: newExpiry,
       next_billing_date: newNextBilling,
+      events: [renewEvent, ...(current.events || [])],
     };
 
     saveStorage(STORAGE_KEYS.SUBSCRIPTIONS, this.subscriptions);
