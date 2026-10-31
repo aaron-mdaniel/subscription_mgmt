@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { FormField } from "@/components/ui/FormField";
+import { signInAction } from "@/lib/auth/actions";
 import {
   Lock,
   Mail,
@@ -42,7 +43,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -53,16 +54,22 @@ export default function LoginPage() {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      if (email.includes("admin")) {
-        router.push("/dashboard");
-      } else if (email.includes("staff")) {
-        router.push("/staff/dashboard");
-      } else {
-        router.push("/portal");
+    try {
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("password", password);
+      const res = await signInAction(formData);
+      if (res && !res.success && res.error) {
+        setError(res.error);
+        setIsLoading(false);
       }
-    }, 500);
+    } catch (err: any) {
+      if (err?.message?.includes("NEXT_REDIRECT")) {
+        return;
+      }
+      setError(err?.message || "Failed to sign in. Please verify credentials.");
+      setIsLoading(false);
+    }
   };
 
   return (
