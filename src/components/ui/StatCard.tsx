@@ -1,33 +1,104 @@
-import React from 'react';
+import React from "react";
+import { cn } from "@/lib/utils/cn";
+import Link from "next/link";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 
-interface StatCardProps {
-  title: string;
+export interface StatCardProps {
+  label?: string;
+  title?: string;
   value: React.ReactNode;
   subtitle?: string;
+  trend?: {
+    value: number | string;
+    positive?: boolean;
+    label?: string;
+  };
   icon?: React.ReactNode;
-  variant?: 'default' | 'success' | 'warning' | 'danger';
+  href?: string;
+  className?: string;
+  variant?: "default" | "warning" | "danger" | "success";
 }
 
 export const StatCard: React.FC<StatCardProps> = ({
+  label,
   title,
   value,
   subtitle,
+  trend,
   icon,
-  variant = 'default',
+  href,
+  className,
+  variant = "default",
 }) => {
-  let borderLeft = 'border-l-indigo-600';
-  if (variant === 'success') borderLeft = 'border-l-emerald-600';
-  if (variant === 'warning') borderLeft = 'border-l-amber-600';
-  if (variant === 'danger') borderLeft = 'border-l-red-600';
+  const displayLabel = label || title || "";
+  const accentTopBorders = {
+    default: "border-t-2 border-t-indigo-500",
+    warning: "border-t-2 border-t-amber-500",
+    danger: "border-t-2 border-t-rose-500",
+    success: "border-t-2 border-t-emerald-500",
+  };
 
-  return (
-    <div className={`bg-white rounded-xl shadow-sm border border-slate-200 border-l-4 ${borderLeft} p-5`}>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-slate-500">{title}</span>
-        {icon && <div className="text-slate-400">{icon}</div>}
+  const content = (
+    <div
+      className={cn(
+        "p-5 bg-white border border-slate-200/80 rounded-xl shadow-subtle hover:shadow-card transition-all duration-200 relative overflow-hidden group",
+        accentTopBorders[variant],
+        href && "cursor-pointer",
+        className
+      )}
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            {displayLabel}
+          </p>
+          <div className="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            {value}
+          </div>
+        </div>
+        {icon && (
+          <div className="p-2.5 rounded-lg bg-slate-50 text-slate-500 border border-slate-100 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-100 transition-colors">
+            {icon}
+          </div>
+        )}
       </div>
-      <div className="text-2xl font-bold text-slate-900 tracking-tight">{value}</div>
-      {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
+
+      {(subtitle || trend) && (
+        <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          {subtitle && (
+            <span className="text-slate-500 truncate max-w-[190px]">
+              {subtitle}
+            </span>
+          )}
+          {trend && (
+            <span
+              className={cn(
+                "inline-flex items-center font-bold px-1.5 py-0.5 rounded text-[11px]",
+                trend.positive
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-rose-50 text-rose-700"
+              )}
+            >
+              {trend.positive ? (
+                <ArrowUpRight className="w-3 h-3 mr-0.5" />
+              ) : (
+                <ArrowDownRight className="w-3 h-3 mr-0.5" />
+              )}
+              {trend.value}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="block group">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 };

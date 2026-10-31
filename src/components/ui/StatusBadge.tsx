@@ -1,50 +1,101 @@
-import React from 'react';
+import React from "react";
+import { cn } from "@/lib/utils/cn";
+
+export type StatusType =
+  // Subscription statuses
+  | "draft"
+  | "quotation"
+  | "confirmed"
+  | "active"
+  | "closed"
+  // Invoice statuses
+  | "paid"
+  | "cancelled"
+  | "overdue"
+  // Quotation statuses
+  | "sent"
+  | "accepted"
+  | "rejected"
+  | "expired"
+  | "converted"
+  // Generic
+  | "pending"
+  | "inactive";
 
 interface StatusBadgeProps {
-  status: string;
+  status: string | StatusType;
   isOverdue?: boolean;
+  className?: string;
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, isOverdue = false }) => {
-  const norm = status?.toLowerCase() || '';
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, isOverdue, className }) => {
+  const normalized = isOverdue ? "overdue" : ((status || "").toLowerCase() as StatusType);
 
-  if (isOverdue) {
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
-        Overdue
-      </span>
-    );
-  }
+  // Semantic styles mapping (Document 03 Section 9)
+  const getStyle = (): { bg: string; text: string; dot: string; label: string } => {
+    switch (normalized) {
+      case "active":
+      case "paid":
+      case "confirmed":
+      case "accepted":
+      case "converted":
+        return {
+          bg: "bg-emerald-50 border-emerald-200",
+          text: "text-emerald-700",
+          dot: "bg-emerald-500",
+          label: normalized.charAt(0).toUpperCase() + normalized.slice(1),
+        };
+      case "draft":
+      case "quotation":
+      case "sent":
+      case "pending":
+        return {
+          bg: "bg-sky-50 border-sky-200",
+          text: "text-sky-700",
+          dot: "bg-sky-500",
+          label: normalized.charAt(0).toUpperCase() + normalized.slice(1),
+        };
+      case "closed":
+      case "inactive":
+        return {
+          bg: "bg-slate-100 border-slate-200",
+          text: "text-slate-600",
+          dot: "bg-slate-400",
+          label: normalized.charAt(0).toUpperCase() + normalized.slice(1),
+        };
+      case "overdue":
+      case "cancelled":
+      case "rejected":
+      case "expired":
+        return {
+          bg: "bg-rose-50 border-rose-200",
+          text: "text-rose-700",
+          dot: "bg-rose-500",
+          label: normalized.charAt(0).toUpperCase() + normalized.slice(1),
+        };
+      default:
+        return {
+          bg: "bg-slate-50 border-slate-200",
+          text: "text-slate-700",
+          dot: "bg-slate-400",
+          label: status || "Unknown",
+        };
+    }
+  };
 
-  let colorClasses = 'bg-slate-100 text-slate-800 border-slate-200';
-
-  switch (norm) {
-    case 'paid':
-    case 'active':
-      colorClasses = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      break;
-    case 'confirmed':
-      colorClasses = 'bg-blue-50 text-blue-700 border-blue-200';
-      break;
-    case 'draft':
-      colorClasses = 'bg-slate-100 text-slate-600 border-slate-200';
-      break;
-    case 'cancelled':
-    case 'closed':
-      colorClasses = 'bg-rose-50 text-rose-700 border-rose-200';
-      break;
-    case 'quotation':
-      colorClasses = 'bg-amber-50 text-amber-700 border-amber-200';
-      break;
-  }
-
-  const label = norm.charAt(0).toUpperCase() + norm.slice(1);
+  const style = getStyle();
 
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colorClasses}`}
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border",
+        style.bg,
+        style.text,
+        className
+      )}
     >
-      {label}
+      <span className={cn("w-1.5 h-1.5 rounded-full", style.dot)} />
+      {style.label}
     </span>
   );
 };

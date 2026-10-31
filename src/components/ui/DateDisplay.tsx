@@ -1,26 +1,24 @@
-import React from 'react';
+import React from "react";
+import { formatDate, formatDateTime } from "@/lib/utils/formatters";
+import { cn } from "@/lib/utils/cn";
 
-interface DateDisplayProps {
-  date: string | null | undefined;
-  includeTime?: boolean;
+export interface DateDisplayProps {
+  date: string | Date | null | undefined;
   className?: string;
+  showRelative?: boolean;
+  includeTime?: boolean;
 }
 
 export const DateDisplay: React.FC<DateDisplayProps> = ({
   date,
-  includeTime = false,
-  className = '',
+  className,
+  includeTime,
 }) => {
-  if (!date) return <span className="text-slate-400">—</span>;
+  const formatted = includeTime ? formatDateTime(date) : formatDate(date);
 
-  try {
-    const d = new Date(date);
-    const options: Intl.DateTimeFormatOptions = includeTime
-      ? { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
-      : { year: 'numeric', month: 'short', day: 'numeric' };
-
-    return <span className={`text-slate-700 ${className}`}>{d.toLocaleDateString('en-US', options)}</span>;
-  } catch {
-    return <span className={className}>{date}</span>;
-  }
+  return (
+    <span className={cn("text-sm text-text-secondary whitespace-nowrap", className)}>
+      {formatted}
+    </span>
+  );
 };

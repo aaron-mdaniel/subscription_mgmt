@@ -1,24 +1,32 @@
-import React from 'react';
+import React from "react";
+import { formatMoney } from "@/lib/utils/formatters";
+import { cn } from "@/lib/utils/cn";
 
-interface MoneyDisplayProps {
-  amount: number;
+export interface MoneyDisplayProps {
+  amount: number | string | null | undefined;
   currency?: string;
   className?: string;
+  variant?: "default" | "muted" | "positive" | "negative";
 }
 
 export const MoneyDisplay: React.FC<MoneyDisplayProps> = ({
   amount,
-  currency = '$',
-  className = '',
+  currency,
+  className,
+  variant = "default",
 }) => {
-  const formatted = new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount || 0);
+  const formatted = formatMoney(amount, currency);
+
+  const variantStyles = {
+    default: "text-text-primary",
+    muted: "text-text-secondary",
+    positive: "text-emerald-600 font-semibold",
+    negative: "text-rose-600 font-semibold",
+  };
 
   return (
-    <span className={`font-mono font-medium ${className}`}>
-      {currency}{formatted}
+    <span className={cn("font-mono font-medium tracking-tight", variantStyles[variant], className)}>
+      {formatted}
     </span>
   );
 };
