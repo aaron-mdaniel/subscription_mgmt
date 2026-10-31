@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   mockDashboardSummary,
-  mockSubscriptions,
   mockInvoices,
 } from "@/lib/mock-data";
+import { subscriptionOps } from "@/lib/services/subscription-ops";
+import { Subscription } from "@/types/domain";
 import {
   Repeat,
   DollarSign,
@@ -36,6 +37,18 @@ export default function AdminDashboardPage() {
   const [showBillingDialog, setShowBillingDialog] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState("oct-2026");
   const [activeTableTab, setActiveTableTab] = useState<"subscriptions" | "invoices">("subscriptions");
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+
+  useEffect(() => {
+    const loadSubs = () => {
+      setSubscriptions(subscriptionOps.getSubscriptions());
+    };
+    loadSubs();
+    const unsubscribe = subscriptionOps.subscribe(loadSubs);
+    return unsubscribe;
+  }, []);
+
+  const activeSubCount = subscriptions.filter((s) => s.status === "active").length;
 
   const handleTriggerBilling = () => {
     setBillingRunning(true);
@@ -52,7 +65,7 @@ export default function AdminDashboardPage() {
     {
       key: "subscription_number",
       header: "Subscription #",
-      render: (row: (typeof mockSubscriptions)[0]) => (
+      render: (row: Subscription) => (
         <span className="font-semibold text-indigo-600 hover:underline cursor-pointer">
           {row.subscription_number}
         </span>
@@ -61,7 +74,7 @@ export default function AdminDashboardPage() {
     {
       key: "customer",
       header: "Customer",
-      render: (row: (typeof mockSubscriptions)[0]) => (
+      render: (row: Subscription) => (
         <div>
           <p className="font-semibold text-slate-900">{row.customer?.name}</p>
           <p className="text-xs text-slate-500">{row.customer?.email}</p>
@@ -71,7 +84,7 @@ export default function AdminDashboardPage() {
     {
       key: "plan",
       header: "Plan & Terms",
-      render: (row: (typeof mockSubscriptions)[0]) => (
+      render: (row: Subscription) => (
         <div>
           <p className="font-medium text-slate-800">{row.plan?.name}</p>
           <p className="text-[11px] text-slate-400 capitalize">Frequency: {row.plan?.frequency}</p>
@@ -81,14 +94,14 @@ export default function AdminDashboardPage() {
     {
       key: "next_billing_date",
       header: "Next Billing",
-      render: (row: (typeof mockSubscriptions)[0]) => (
+      render: (row: Subscription) => (
         <DateDisplay date={row.next_billing_date} />
       ),
     },
     {
       key: "status",
       header: "Status",
-      render: (row: (typeof mockSubscriptions)[0]) => (
+      render: (row: Subscription) => (
         <StatusBadge status={row.status} />
       ),
     },
@@ -226,7 +239,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Active Subscriptions"
-          value={mockDashboardSummary.activeSubscriptions}
+          value={activeSubCount}
           subtitle="Generating recurring revenue"
           trend={{ value: "+12.5%", positive: true }}
           icon={<Repeat className="w-5 h-5" />}
@@ -272,7 +285,7 @@ export default function AdminDashboardPage() {
               }`}
             >
               <Repeat className="w-3.5 h-3.5" />
-              Active Subscriptions ({mockSubscriptions.length})
+              Active Subscriptions ({subscriptions.length})
             </button>
             <button
               onClick={() => setActiveTableTab("invoices")}
@@ -298,7 +311,7 @@ export default function AdminDashboardPage() {
         {activeTableTab === "subscriptions" ? (
           <DataTable
             columns={subscriptionColumns}
-            data={mockSubscriptions}
+            data={subscriptions}
           />
         ) : (
           <DataTable

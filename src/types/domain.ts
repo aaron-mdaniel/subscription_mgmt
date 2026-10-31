@@ -144,6 +144,7 @@ export interface Subscription {
   next_billing_date?: string | null;
   payment_terms?: string | null;
   status: SubscriptionStatus;
+  is_paused?: boolean;
   created_by?: string;
   lines?: SubscriptionLine[];
   created_at: string;

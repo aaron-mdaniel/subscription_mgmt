@@ -94,7 +94,16 @@ export default function SubscriptionsPage() {
     {
       key: "status",
       header: "Lifecycle State",
-      render: (row: Subscription) => <StatusBadge status={row.status} />,
+      render: (row: Subscription) => (
+        <div className="flex items-center gap-1.5">
+          <StatusBadge status={row.status} />
+          {row.is_paused && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+              Paused
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: "actions",
@@ -126,15 +135,36 @@ export default function SubscriptionsPage() {
           )}
 
           {row.status === "active" && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-[11px] px-2.5 text-rose-600 border-rose-200 hover:bg-rose-50"
-              leftIcon={<ShieldAlert className="w-3 h-3" />}
-              onClick={() => handleQuickTransition(row, "closed")}
-            >
-              Close
-            </Button>
+            <>
+              {row.is_paused ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px] px-2 text-amber-800 border-amber-300 hover:bg-amber-50"
+                  onClick={() => subscriptionOps.resumeSubscription(row.id)}
+                >
+                  Resume
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px] px-2 text-amber-700 border-amber-300 hover:bg-amber-50"
+                  onClick={() => subscriptionOps.pauseSubscription(row.id)}
+                >
+                  Pause
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11px] px-2.5 text-rose-600 border-rose-200 hover:bg-rose-50"
+                leftIcon={<ShieldAlert className="w-3 h-3" />}
+                onClick={() => handleQuickTransition(row, "closed")}
+              >
+                Close
+              </Button>
+            </>
           )}
 
           <Button

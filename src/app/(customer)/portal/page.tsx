@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
@@ -11,10 +11,11 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   mockCustomers,
-  mockSubscriptions,
   mockInvoices,
   mockPayments,
 } from "@/lib/mock-data";
+import { subscriptionOps } from "@/lib/services/subscription-ops";
+import { Subscription } from "@/types/domain";
 import {
   Repeat,
   Calendar,
@@ -30,9 +31,19 @@ import {
 
 export default function CustomerPortalPage() {
   const currentCustomer = mockCustomers[0]; // Acme Cloud Technologies
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+
+  useEffect(() => {
+    const loadSubs = () => {
+      setSubscriptions(subscriptionOps.getSubscriptions());
+    };
+    loadSubs();
+    const unsubscribe = subscriptionOps.subscribe(loadSubs);
+    return unsubscribe;
+  }, []);
 
   // Customer Isolation: Only Acme's records
-  const mySubscriptions = mockSubscriptions.filter(
+  const mySubscriptions = subscriptions.filter(
     (s) => s.customer_id === currentCustomer.id
   );
   const myInvoices = mockInvoices.filter(

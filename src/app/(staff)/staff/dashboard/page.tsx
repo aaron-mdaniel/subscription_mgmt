@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { DataTable } from "@/components/ui/DataTable";
@@ -9,12 +9,12 @@ import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { DateDisplay } from "@/components/ui/DateDisplay";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { QuotationModal } from "@/components/modals/QuotationModal";
 import {
-  mockCustomers,
-  mockQuotations,
   mockInvoices,
-  mockSubscriptions,
 } from "@/lib/mock-data";
+import { subscriptionOps } from "@/lib/services/subscription-ops";
+import { Customer, Quotation, Subscription } from "@/types/domain";
 import {
   FileSpreadsheet,
   Users,
@@ -26,7 +26,23 @@ import {
 
 export default function StaffDashboardPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showQuotationModal, setShowQuotationModal] = useState(false);
   const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null);
+
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+
+  useEffect(() => {
+    const loadData = () => {
+      setCustomers(subscriptionOps.getCustomers());
+      setQuotations(subscriptionOps.getQuotations());
+      setSubscriptions(subscriptionOps.getSubscriptions());
+    };
+    loadData();
+    const unsubscribe = subscriptionOps.subscribe(loadData);
+    return unsubscribe;
+  }, []);
 
   const handleRecordPayment = () => {
     setShowPaymentModal(false);
@@ -39,7 +55,7 @@ export default function StaffDashboardPage() {
     {
       key: "quotation_number",
       header: "Quotation #",
-      render: (row: (typeof mockQuotations)[0]) => (
+      render: (row: Quotation) => (
         <span className="font-semibold text-brand">
           {row.quotation_number}
         </span>
@@ -48,28 +64,28 @@ export default function StaffDashboardPage() {
     {
       key: "customer",
       header: "Customer",
-      render: (row: (typeof mockQuotations)[0]) => (
+      render: (row: Quotation) => (
         <span>{row.customer?.name}</span>
       ),
     },
     {
       key: "valid_until",
       header: "Valid Until",
-      render: (row: (typeof mockQuotations)[0]) => (
+      render: (row: Quotation) => (
         <DateDisplay date={row.valid_until} />
       ),
     },
     {
       key: "total",
       header: "Total Value",
-      render: (row: (typeof mockQuotations)[0]) => (
+      render: (row: Quotation) => (
         <MoneyDisplay amount={row.total} />
       ),
     },
     {
       key: "status",
       header: "Status",
-      render: (row: (typeof mockQuotations)[0]) => (
+      render: (row: Quotation) => (
         <StatusBadge status={row.status} />
       ),
     },
@@ -142,7 +158,7 @@ export default function StaffDashboardPage() {
               variant="primary"
               size="sm"
               leftIcon={<PlusCircle className="w-3.5 h-3.5" />}
-              onClick={() => alert("Creating quotation from standardized template...")}
+              onClick={() => setShowQuotationModal(true)}
             >
               New Quotation
             </Button>
@@ -174,20 +190,20 @@ export default function StaffDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
           label="Active Accounts"
-          value={mockCustomers.length}
+          value={customers.length}
           subtitle="Customers under management"
           icon={<Users className="w-5 h-5" />}
         />
         <StatCard
           label="Pending Quotes"
-          value={mockQuotations.filter((q) => q.status === "draft").length}
+          value={quotations.filter((q) => q.status === "draft").length}
           subtitle="Quotes awaiting review/acceptance"
           variant="warning"
           icon={<FileSpreadsheet className="w-5 h-5" />}
         />
         <StatCard
           label="Active Subscriptions"
-          value={mockSubscriptions.filter((s) => s.status === "active").length}
+          value={subscriptions.filter((s) => s.status === "active").length}
           subtitle="Generating live billing runs"
           icon={<Repeat className="w-5 h-5" />}
         />
@@ -209,7 +225,7 @@ export default function StaffDashboardPage() {
           </h3>
           <DataTable
             columns={quoteColumns}
-            data={mockQuotations}
+            data={quotations}
           />
         </div>
 
@@ -233,6 +249,14 @@ export default function StaffDashboardPage() {
         confirmLabel="Confirm & Settle Invoice"
         onConfirm={handleRecordPayment}
         onCancel={() => setShowPaymentModal(false)}
+      />
+
+      <QuotationModal
+        isOpen={showQuotationModal}
+        onClose={() => setShowQuotationModal(false)}
+        onSuccess={() => {
+          setQuotations(subscriptionOps.getQuotations());
+        }}
       />
     </div>
   );
