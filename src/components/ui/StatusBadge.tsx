@@ -24,11 +24,12 @@ export type StatusType =
 
 interface StatusBadgeProps {
   status: string | StatusType;
+  isOverdue?: boolean;
   className?: string;
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className }) => {
-  const normalized = (status || "").toLowerCase() as StatusType;
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, isOverdue, className }) => {
+  const normalized = isOverdue ? "overdue" : ((status || "").toLowerCase() as StatusType);
 
   // Semantic styles mapping (Document 03 Section 9)
   const getStyle = (): { bg: string; text: string; dot: string; label: string } => {

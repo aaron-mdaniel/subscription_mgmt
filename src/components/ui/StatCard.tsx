@@ -4,8 +4,9 @@ import Link from "next/link";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 export interface StatCardProps {
-  label: string;
-  value: string | number;
+  label?: string;
+  title?: string;
+  value: React.ReactNode;
   subtitle?: string;
   trend?: {
     value: number | string;
@@ -20,6 +21,7 @@ export interface StatCardProps {
 
 export const StatCard: React.FC<StatCardProps> = ({
   label,
+  title,
   value,
   subtitle,
   trend,
@@ -28,6 +30,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   className,
   variant = "default",
 }) => {
+  const displayLabel = label || title || "";
   const accentTopBorders = {
     default: "border-t-2 border-t-indigo-500",
     warning: "border-t-2 border-t-amber-500",
@@ -47,11 +50,11 @@ export const StatCard: React.FC<StatCardProps> = ({
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            {label}
+            {displayLabel}
           </p>
-          <h3 className="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+          <div className="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
             {value}
-          </h3>
+          </div>
         </div>
         {icon && (
           <div className="p-2.5 rounded-lg bg-slate-50 text-slate-500 border border-slate-100 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-100 transition-colors">
