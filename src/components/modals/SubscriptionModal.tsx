@@ -9,7 +9,7 @@ import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { DateDisplay } from "@/components/ui/DateDisplay";
 import { subscriptionOps } from "@/lib/services/subscription-ops";
 import { Customer, Plan, Product, Subscription, SubscriptionStatus } from "@/types/domain";
-import { X, Layers, CheckCircle, Play, ShieldAlert, ArrowRight } from "lucide-react";
+import { X, Layers, CheckCircle, Play, ShieldAlert, ArrowRight, History } from "lucide-react";
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -251,6 +251,43 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     </p>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Audit Trail / History Timeline */}
+            <div className="pt-3 border-t border-border">
+              <h4 className="text-xs font-semibold text-text-primary uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <History className="w-3.5 h-3.5 text-brand" />
+                Lifecycle Audit Trail & Events (M3-05)
+              </h4>
+
+              <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                {subscription.events && subscription.events.length > 0 ? (
+                  subscription.events.map((ev) => (
+                    <div
+                      key={ev.id}
+                      className="p-2.5 bg-slate-50 border border-slate-200 rounded text-xs flex items-start gap-2.5"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-brand shrink-0 mt-1.5" />
+                      <div className="flex-1">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-slate-800 uppercase text-[10px] tracking-wide">
+                            {ev.event_type}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            <DateDisplay date={ev.created_at} />
+                          </span>
+                        </div>
+                        <p className="text-slate-600 mt-0.5">{ev.description}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-500">
+                    Established in {subscription.status} status on{" "}
+                    <DateDisplay date={subscription.created_at} />.
+                  </div>
+                )}
               </div>
             </div>
 

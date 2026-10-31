@@ -6,13 +6,14 @@ import { Input } from "@/components/ui/Input";
 import { FormField } from "@/components/ui/FormField";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { subscriptionOps } from "@/lib/services/subscription-ops";
-import { Customer, Product, Quotation } from "@/types/domain";
-import { X, FileText, Plus, Trash2 } from "lucide-react";
+import { Customer, Product, Quotation, QuotationTemplate } from "@/types/domain";
+import { X, FileText, Plus, Trash2, BookmarkCheck } from "lucide-react";
 
 interface QuotationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (quotation: Quotation) => void;
+  initialCustomerId?: string;
 }
 
 interface QuotationLineInput {
@@ -28,9 +29,12 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  initialCustomerId,
 }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [templates, setTemplates] = useState<QuotationTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [quotationDate, setQuotationDate] = useState("");
   const [validUntil, setValidUntil] = useState("");
@@ -43,8 +47,10 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
     if (isOpen) {
       const custs = subscriptionOps.getCustomers();
       const prods = subscriptionOps.getProducts();
+      const tpls = subscriptionOps.getQuotationTemplates();
       setCustomers(custs);
       setProducts(prods);
+      setTemplates(tpls);
 
       const today = new Date().toISOString().split("T")[0];
       const validDate = new Date();
@@ -54,8 +60,11 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
       setQuotationDate(today);
       setValidUntil(validUntilStr);
       setNotes("Standard 30-day validity. Prices exclude custom hardware or external infrastructure fees.");
+      setSelectedTemplateId("");
 
-      if (custs.length > 0) {
+      if (initialCustomerId) {
+        setSelectedCustomerId(initialCustomerId);
+      } else if (custs.length > 0) {
         setSelectedCustomerId(custs[0].id);
       }
 
@@ -154,6 +163,36 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
     setLines(updated);
   };
 
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    if (!templateId) return;
+
+    const tpl = templates.find((t) => t.id === templateId);
+    if (!tpl) return;
+
+    const newLines: QuotationLineInput[] = tpl.lines.map((tl) => {
+      const p = products.find((prod) => prod.id === tl.product_id) || products[0];
+      const v = p?.variants?.find((varItem) => varItem.id === tl.variant_id) || null;
+      const unitPrice = (p?.sales_price || 0) + (v ? v.price_adjustment : 0);
+
+      return {
+        productId: p?.id || "",
+        variantId: v ? v.id : "",
+        description: `${p?.name || "Product"} - ${v ? v.name : "Standard"}`,
+        quantity: tl.quantity || 1,
+        unitPrice,
+        taxRate: 0.18,
+      };
+    });
+
+    if (newLines.length > 0) {
+      setLines(newLines);
+    }
+    if (tpl.default_notes) {
+      setNotes(tpl.default_notes);
+    }
+  };
+
   // Compute live totals
   let subtotal = 0;
   let taxTotal = 0;
@@ -240,6 +279,26 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Quick Template Selector */}
+          <div className="p-3 bg-indigo-50/60 border border-indigo-100 rounded-control flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-indigo-900 font-medium shrink-0">
+              <BookmarkCheck className="w-4 h-4 text-brand" />
+              <span>Start from Template:</span>
+            </div>
+            <select
+              className="flex-1 h-8 px-2.5 text-xs bg-white border border-indigo-200 rounded focus:outline-none focus:ring-1 focus:ring-brand font-medium text-slate-800 cursor-pointer"
+              value={selectedTemplateId}
+              onChange={(e) => handleTemplateSelect(e.target.value)}
+            >
+              <option value="">Custom Quotation (No Template)</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-1">
               <FormField label="Target Customer" required error={errors.customer}>

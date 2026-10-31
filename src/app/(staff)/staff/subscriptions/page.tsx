@@ -6,13 +6,16 @@ import { DataTable } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DateDisplay } from "@/components/ui/DateDisplay";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { SubscriptionModal } from "@/components/modals/SubscriptionModal";
 import { subscriptionOps } from "@/lib/services/subscription-ops";
 import { Subscription, SubscriptionStatus } from "@/types/domain";
-import { Plus, Eye, Play, CheckCircle, ShieldAlert } from "lucide-react";
+import { Plus, Eye, Play, CheckCircle, ShieldAlert, Search } from "lucide-react";
 
 export default function StaffSubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused" | "confirmed" | "closed">("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSub, setSelectedSub] = useState<Subscription | null>(null);
 
@@ -42,12 +45,34 @@ export default function StaffSubscriptionsPage() {
     }
   };
 
+  const filtered = subscriptions.filter((s) => {
+    const matchesSearch =
+      s.subscription_number.toLowerCase().includes(search.toLowerCase()) ||
+      (s.customer?.name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (s.customer?.email || "").toLowerCase().includes(search.toLowerCase()) ||
+      (s.plan?.name || "").toLowerCase().includes(search.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "all"
+        ? true
+        : statusFilter === "paused"
+        ? s.is_paused
+        : statusFilter === "active"
+        ? s.status === "active" && !s.is_paused
+        : s.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
   const columns = [
     {
       key: "subscription_number",
       header: "Subscription #",
       render: (row: Subscription) => (
-        <span className="font-semibold text-brand">
+        <span
+          className="font-semibold text-brand hover:underline cursor-pointer"
+          onClick={() => handleInspect(row)}
+        >
           {row.subscription_number}
         </span>
       ),
@@ -87,7 +112,11 @@ export default function StaffSubscriptionsPage() {
       header: "Next Billing",
       render: (row: Subscription) => (
         <span className="font-semibold text-slate-800">
-          <DateDisplay date={row.next_billing_date} />
+          {row.is_paused ? (
+            <span className="text-amber-700 italic text-xs">Suspended (Paused)</span>
+          ) : (
+            <DateDisplay date={row.next_billing_date} />
+          )}
         </span>
       ),
     },
@@ -196,7 +225,74 @@ export default function StaffSubscriptionsPage() {
           </Button>
         }
       />
-      <DataTable columns={columns} data={subscriptions} />
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
+        <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              statusFilter === "all"
+                ? "bg-slate-900 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            All ({subscriptions.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter("active")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              statusFilter === "active"
+                ? "bg-emerald-600 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Active ({subscriptions.filter((s) => s.status === "active" && !s.is_paused).length})
+          </button>
+          <button
+            onClick={() => setStatusFilter("paused")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              statusFilter === "paused"
+                ? "bg-amber-600 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Paused ({subscriptions.filter((s) => s.is_paused).length})
+          </button>
+          <button
+            onClick={() => setStatusFilter("confirmed")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              statusFilter === "confirmed"
+                ? "bg-indigo-600 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Confirmed ({subscriptions.filter((s) => s.status === "confirmed").length})
+          </button>
+          <button
+            onClick={() => setStatusFilter("closed")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              statusFilter === "closed"
+                ? "bg-slate-600 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Closed ({subscriptions.filter((s) => s.status === "closed").length})
+          </button>
+        </div>
+
+        <div className="w-full sm:w-64 relative">
+          <Search className="w-3.5 h-3.5 text-text-muted absolute left-3 top-3" />
+          <Input
+            placeholder="Search sub #, customer, plan..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-9 text-xs"
+          />
+        </div>
+      </div>
+
+      <DataTable columns={columns} data={filtered} />
 
       <SubscriptionModal
         isOpen={isModalOpen}

@@ -70,6 +70,18 @@ export interface Plan {
   created_at: string;
 }
 
+export interface QuotationTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  default_notes?: string;
+  lines: Array<{
+    product_id: string;
+    variant_id?: string;
+    quantity: number;
+  }>;
+}
+
 export type QuotationStatus =
   | "draft"
   | "sent"
@@ -131,6 +143,14 @@ export interface SubscriptionLine {
   line_total: number;
 }
 
+export interface SubscriptionEvent {
+  id: string;
+  subscription_id: string;
+  event_type: "created" | "converted" | "confirmed" | "activated" | "paused" | "resumed" | "renewed" | "closed";
+  description: string;
+  created_at: string;
+}
+
 export interface Subscription {
   id: string;
   subscription_number: string;
@@ -147,6 +167,7 @@ export interface Subscription {
   is_paused?: boolean;
   created_by?: string;
   lines?: SubscriptionLine[];
+  events?: SubscriptionEvent[];
   created_at: string;
 }
 
