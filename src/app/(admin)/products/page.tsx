@@ -1,16 +1,37 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DataTable } from "@/components/ui/DataTable";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { Button } from "@/components/ui/Button";
-import { mockProducts } from "@/lib/mock-data";
+import { ProductModal } from "@/components/modals/ProductModal";
+import { subscriptionOps } from "@/lib/services/subscription-ops";
 import { Product } from "@/types/domain";
-import { Plus, Tag } from "lucide-react";
+import { Plus, Tag, Edit } from "lucide-react";
 
 export default function ProductsPage() {
-  const [products] = useState<Product[]>(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    setProducts(subscriptionOps.getProducts());
+    const unsubscribe = subscriptionOps.subscribe(() => {
+      setProducts(subscriptionOps.getProducts());
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleOpenAdd = () => {
+    setEditingProduct(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (product: Product) => {
+    setEditingProduct(product);
+    setIsModalOpen(true);
+  };
 
   const columns = [
     {
@@ -19,7 +40,7 @@ export default function ProductsPage() {
       render: (row: Product) => (
         <div>
           <p className="font-semibold text-text-primary">{row.name}</p>
-          <p className="text-xs text-text-secondary">{row.description}</p>
+          <p className="text-xs text-text-secondary">{row.description || "No description provided"}</p>
         </div>
       ),
     },
@@ -55,7 +76,11 @@ export default function ProductsPage() {
               <div key={v.id} className="text-xs flex items-center gap-2">
                 <span className="font-medium text-slate-700">{v.name}:</span>
                 <span className={v.price_adjustment > 0 ? "text-indigo-600 font-bold" : "text-slate-500"}>
-                  {v.price_adjustment > 0 ? `+₹${v.price_adjustment}` : "Base"}
+                  {v.price_adjustment > 0
+                    ? `+₹${v.price_adjustment}`
+                    : v.price_adjustment < 0
+                    ? `-₹${Math.abs(v.price_adjustment)}`
+                    : "Base"}
                 </span>
               </div>
             ))
@@ -63,6 +88,20 @@ export default function ProductsPage() {
             <span className="text-xs text-text-muted">Standard Only</span>
           )}
         </div>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      render: (row: Product) => (
+        <Button
+          size="sm"
+          variant="ghost"
+          leftIcon={<Edit className="w-3.5 h-3.5" />}
+          onClick={() => handleOpenEdit(row)}
+        >
+          Edit
+        </Button>
       ),
     },
   ];
@@ -76,7 +115,7 @@ export default function ProductsPage() {
           <Button
             leftIcon={<Plus className="w-3.5 h-3.5" />}
             size="sm"
-            onClick={() => alert("Product creation modal")}
+            onClick={handleOpenAdd}
           >
             New Product
           </Button>
@@ -84,6 +123,15 @@ export default function ProductsPage() {
       />
 
       <DataTable columns={columns} data={products} />
+
+      <ProductModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        product={editingProduct}
+        onSuccess={() => {
+          setProducts(subscriptionOps.getProducts());
+        }}
+      />
     </div>
   );
 }

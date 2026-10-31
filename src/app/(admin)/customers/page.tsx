@@ -1,18 +1,29 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DataTable } from "@/components/ui/DataTable";
 import { DateDisplay } from "@/components/ui/DateDisplay";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { mockCustomers } from "@/lib/mock-data";
+import { CustomerModal } from "@/components/modals/CustomerModal";
+import { subscriptionOps } from "@/lib/services/subscription-ops";
 import { Customer } from "@/types/domain";
-import { Plus, Search, Building } from "lucide-react";
+import { Plus, Search, Building, Edit } from "lucide-react";
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>(mockCustomers);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+
+  useEffect(() => {
+    setCustomers(subscriptionOps.getCustomers());
+    const unsubscribe = subscriptionOps.subscribe(() => {
+      setCustomers(subscriptionOps.getCustomers());
+    });
+    return unsubscribe;
+  }, []);
 
   const filtered = customers.filter(
     (c) =>
@@ -20,6 +31,16 @@ export default function CustomersPage() {
       c.email.toLowerCase().includes(search.toLowerCase()) ||
       c.customer_code.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleOpenAdd = () => {
+    setEditingCustomer(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setIsModalOpen(true);
+  };
 
   const columns = [
     {
@@ -41,7 +62,7 @@ export default function CustomersPage() {
           </div>
           <div>
             <p className="font-semibold text-text-primary">{row.name}</p>
-            <p className="text-xs text-text-secondary">{row.address}</p>
+            <p className="text-xs text-text-secondary">{row.address || "No address provided"}</p>
           </div>
         </div>
       ),
@@ -75,6 +96,20 @@ export default function CustomersPage() {
         </span>
       ),
     },
+    {
+      key: "actions",
+      header: "Actions",
+      render: (row: Customer) => (
+        <Button
+          size="sm"
+          variant="ghost"
+          leftIcon={<Edit className="w-3.5 h-3.5" />}
+          onClick={() => handleOpenEdit(row)}
+        >
+          Edit
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -86,7 +121,7 @@ export default function CustomersPage() {
           <Button
             leftIcon={<Plus className="w-3.5 h-3.5" />}
             size="sm"
-            onClick={() => alert("Customer creation form dialog")}
+            onClick={handleOpenAdd}
           >
             Add Customer
           </Button>
@@ -104,6 +139,15 @@ export default function CustomersPage() {
       </div>
 
       <DataTable columns={columns} data={filtered} />
+
+      <CustomerModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        customer={editingCustomer}
+        onSuccess={() => {
+          setCustomers(subscriptionOps.getCustomers());
+        }}
+      />
     </div>
   );
 }

@@ -1,16 +1,37 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DataTable } from "@/components/ui/DataTable";
 import { DateDisplay } from "@/components/ui/DateDisplay";
 import { Button } from "@/components/ui/Button";
-import { mockCustomers } from "@/lib/mock-data";
+import { CustomerModal } from "@/components/modals/CustomerModal";
+import { subscriptionOps } from "@/lib/services/subscription-ops";
 import { Customer } from "@/types/domain";
-import { Plus, Building } from "lucide-react";
+import { Plus, Building, Edit } from "lucide-react";
 
 export default function StaffCustomersPage() {
-  const [customers] = useState<Customer[]>(mockCustomers);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+
+  useEffect(() => {
+    setCustomers(subscriptionOps.getCustomers());
+    const unsubscribe = subscriptionOps.subscribe(() => {
+      setCustomers(subscriptionOps.getCustomers());
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleOpenAdd = () => {
+    setEditingCustomer(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setIsModalOpen(true);
+  };
 
   const columns = [
     {
@@ -32,7 +53,7 @@ export default function StaffCustomersPage() {
           </div>
           <div>
             <p className="font-semibold text-text-primary">{row.name}</p>
-            <p className="text-xs text-text-secondary">{row.address}</p>
+            <p className="text-xs text-text-secondary">{row.address || "No address provided"}</p>
           </div>
         </div>
       ),
@@ -56,6 +77,20 @@ export default function StaffCustomersPage() {
       header: "Created Date",
       render: (row: Customer) => <DateDisplay date={row.created_at} />,
     },
+    {
+      key: "actions",
+      header: "Actions",
+      render: (row: Customer) => (
+        <Button
+          size="sm"
+          variant="ghost"
+          leftIcon={<Edit className="w-3.5 h-3.5" />}
+          onClick={() => handleOpenEdit(row)}
+        >
+          Edit
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -67,13 +102,22 @@ export default function StaffCustomersPage() {
           <Button
             leftIcon={<Plus className="w-3.5 h-3.5" />}
             size="sm"
-            onClick={() => alert("Add customer form")}
+            onClick={handleOpenAdd}
           >
             Add Customer
           </Button>
         }
       />
       <DataTable columns={columns} data={customers} />
+
+      <CustomerModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        customer={editingCustomer}
+        onSuccess={() => {
+          setCustomers(subscriptionOps.getCustomers());
+        }}
+      />
     </div>
   );
 }
