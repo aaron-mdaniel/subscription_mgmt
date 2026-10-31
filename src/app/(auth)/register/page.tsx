@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { FormField } from "@/components/ui/FormField";
+import { registerCustomerAction } from "@/lib/auth/actions";
 import { Lock, Mail, User, Check, X, Building } from "lucide-react";
 
 export default function RegisterPage() {
@@ -27,7 +28,7 @@ export default function RegisterPage() {
     hasMinLength && hasUpperCase && hasLowerCase && hasSpecialChar;
   const passwordsMatch = password && password === confirmPassword;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -43,11 +44,25 @@ export default function RegisterPage() {
 
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      const formData = new FormData();
+      formData.append("fullName", fullName);
+      formData.append("companyName", companyName);
+      formData.append("email", email);
+      formData.append("password", password);
+
+      const res = await registerCustomerAction(formData);
+      if (res && !res.success && res.error) {
+        setError(res.error);
+        setIsLoading(false);
+      }
+    } catch (err: any) {
+      if (err?.message?.includes("NEXT_REDIRECT")) {
+        return;
+      }
+      setError(err?.message || "Registration failed. Please check details.");
       setIsLoading(false);
-      // Public customer registration lands strictly into the customer portal
-      router.push("/portal");
-    }, 700);
+    }
   };
 
   return (
