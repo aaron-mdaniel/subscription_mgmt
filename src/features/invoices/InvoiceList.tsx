@@ -7,7 +7,8 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { MoneyDisplay } from '@/components/ui/MoneyDisplay';
 import { DateDisplay } from '@/components/ui/DateDisplay';
 import { isInvoiceOverdue } from '@/lib/calculations/finance';
-import { runBillingAction, createInvoiceAction } from '@/features/invoices/actions';
+import { createInvoiceAction } from '@/features/invoices/actions';
+import { runBillingAction } from '@/features/billing/actions';
 import { RefreshCw, Plus, Search, Filter, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface InvoiceListProps {

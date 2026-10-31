@@ -90,16 +90,16 @@ export const InvoiceDetail: React.FC<InvoiceDetailProps> = ({
         note: payNote,
       });
 
-      if (res.success && res.data) {
+      if (res.success) {
         // Refresh invoice details
         const refreshed = await (await import('@/features/invoices/actions')).getInvoiceByIdAction(invoice.id);
-        if (refreshed.success && refreshed.data) {
+        if (refreshed.success) {
           setInvoice(refreshed.data);
         }
         setShowPayModal(false);
         setActionMessage('Payment recorded and applied successfully!');
       } else {
-        alert(res.error?.message || 'Failed to record payment');
+        alert(res.error.message || 'Failed to record payment');
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);

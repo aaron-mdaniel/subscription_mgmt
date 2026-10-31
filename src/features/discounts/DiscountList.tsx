@@ -37,12 +37,12 @@ export const DiscountList: React.FC<DiscountListProps> = ({ initialDiscounts }) 
         is_active: true,
       });
 
-      if (res.success && res.data) {
+      if (res.success) {
         setDiscounts([res.data, ...discounts]);
         setShowModal(false);
         setCodeName('');
       } else {
-        alert(res.error?.message || 'Failed to create discount');
+        alert(res.error.message || 'Failed to create discount');
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
