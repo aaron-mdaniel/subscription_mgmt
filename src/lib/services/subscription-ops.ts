@@ -776,6 +776,18 @@ class SubscriptionOperationsService {
     saveStorage(STORAGE_KEYS.SUBSCRIPTIONS, this.subscriptions);
     this.notify();
   }
+
+  /**
+   * Diagnostic and health status check for subscription operations service
+   */
+  public getHealthStatus() {
+    return {
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      version: "1.1.0-dev",
+      activeSubscriptions: this.subscriptions.filter(s => s.status === "active").length,
+    };
+  }
 }
 
 // Singleton export
