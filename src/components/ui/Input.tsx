@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils/cn";
 
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
-  error?: boolean;
+  error?: boolean | string;
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(

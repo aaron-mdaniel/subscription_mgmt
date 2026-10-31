@@ -172,14 +172,23 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-card flex items-center justify-between">
               <div>
                 <p className="text-xs text-text-secondary">Current Lifecycle State</p>
-                <div className="mt-1">
+                <div className="mt-1 flex items-center gap-2">
                   <StatusBadge status={subscription.status} />
+                  {subscription.is_paused && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                      Paused
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-xs text-text-secondary">Next Due Billing Date</p>
                 <p className="text-sm font-semibold text-text-primary">
-                  <DateDisplay date={subscription.next_billing_date} />
+                  {subscription.is_paused ? (
+                    <span className="text-amber-700 italic">Suspended (Paused)</span>
+                  ) : (
+                    <DateDisplay date={subscription.next_billing_date} />
+                  )}
                 </p>
               </div>
             </div>
@@ -299,15 +308,58 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 )}
 
                 {subscription.status === "active" && (
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    leftIcon={<ShieldAlert className="w-4 h-4" />}
-                    onClick={() => handleTransition("closed")}
-                    isLoading={isSubmitting}
-                  >
-                    Close Subscription &rarr; Closed
-                  </Button>
+                  <>
+                    {subscription.is_paused ? (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        className="bg-amber-600 hover:bg-amber-700"
+                        leftIcon={<Play className="w-4 h-4" />}
+                        onClick={() => {
+                          const updated = subscriptionOps.resumeSubscription(subscription.id);
+                          onSuccess(updated);
+                          onClose();
+                        }}
+                      >
+                        Resume Billing
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-amber-700 border-amber-300 hover:bg-amber-50"
+                        onClick={() => {
+                          const updated = subscriptionOps.pauseSubscription(subscription.id);
+                          onSuccess(updated);
+                          onClose();
+                        }}
+                      >
+                        Pause Subscription
+                      </Button>
+                    )}
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const updated = subscriptionOps.renewSubscription(subscription.id);
+                        onSuccess(updated);
+                        onClose();
+                      }}
+                    >
+                      Renew Term (+1 Cycle)
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      leftIcon={<ShieldAlert className="w-4 h-4" />}
+                      onClick={() => handleTransition("closed")}
+                      isLoading={isSubmitting}
+                    >
+                      Close Subscription &rarr; Closed
+                    </Button>
+                  </>
                 )}
 
                 {subscription.status === "closed" && (

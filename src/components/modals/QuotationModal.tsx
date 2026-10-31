@@ -194,7 +194,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
           variant_id: l.variantId || undefined,
           description_snapshot: l.description,
           quantity: Number(l.quantity) || 1,
-          unitPrice: Number(l.unitPrice) || 0,
+          unit_price: Number(l.unitPrice) || 0,
           tax_rate_snapshot: Number(l.taxRate) || 0.18,
         })),
       });

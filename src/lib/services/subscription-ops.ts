@@ -581,6 +581,69 @@ class SubscriptionOperationsService {
     return this.subscriptions[idx];
   }
 
+  public pauseSubscription(id: string): Subscription {
+    const idx = this.subscriptions.findIndex((s) => s.id === id);
+    if (idx === -1) throw new Error(`Subscription ${id} not found.`);
+    const current = this.subscriptions[idx];
+    if (current.status !== "active") {
+      throw new Error("Only active subscriptions can be paused.");
+    }
+    if (current.plan && !current.plan.allow_pause) {
+      throw new Error(`Plan ${current.plan.name} does not permit pausing.`);
+    }
+
+    this.subscriptions[idx] = {
+      ...current,
+      is_paused: true,
+    };
+
+    saveStorage(STORAGE_KEYS.SUBSCRIPTIONS, this.subscriptions);
+    this.notify();
+    return this.subscriptions[idx];
+  }
+
+  public resumeSubscription(id: string): Subscription {
+    const idx = this.subscriptions.findIndex((s) => s.id === id);
+    if (idx === -1) throw new Error(`Subscription ${id} not found.`);
+    const current = this.subscriptions[idx];
+    if (current.status !== "active") {
+      throw new Error("Only active subscriptions can be resumed.");
+    }
+
+    this.subscriptions[idx] = {
+      ...current,
+      is_paused: false,
+    };
+
+    saveStorage(STORAGE_KEYS.SUBSCRIPTIONS, this.subscriptions);
+    this.notify();
+    return this.subscriptions[idx];
+  }
+
+  public renewSubscription(id: string): Subscription {
+    const idx = this.subscriptions.findIndex((s) => s.id === id);
+    if (idx === -1) throw new Error(`Subscription ${id} not found.`);
+    const current = this.subscriptions[idx];
+
+    const frequency = current.plan ? current.plan.frequency : "monthly";
+    const baseDate = current.expiry_date || new Date().toISOString().split("T")[0];
+    const newExpiry = calculateNextBillingDate(baseDate, frequency);
+    const newNextBilling = calculateNextBillingDate(
+      current.next_billing_date || new Date().toISOString().split("T")[0],
+      frequency
+    );
+
+    this.subscriptions[idx] = {
+      ...current,
+      expiry_date: newExpiry,
+      next_billing_date: newNextBilling,
+    };
+
+    saveStorage(STORAGE_KEYS.SUBSCRIPTIONS, this.subscriptions);
+    this.notify();
+    return this.subscriptions[idx];
+  }
+
   private isValidTransition(from: SubscriptionStatus, to: SubscriptionStatus): boolean {
     const transitions: Record<SubscriptionStatus, SubscriptionStatus[]> = {
       draft: ["quotation", "confirmed"],
